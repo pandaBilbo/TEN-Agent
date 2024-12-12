@@ -32,7 +32,7 @@ SAVE_TO_NOTEBOOK_TOOL_NAME = "save_to_notebook"
 SAVE_TO_NOTEBOOK_TOOL_DESCRIPTION = "call this whenever you need to save anything to notebook"    
 
 GENERATE_SOURCE_CODE_TOOL_NAME = "generate_source_code"
-GENERATE_SOURCE_CODE_TOOL_DESCRIPTION = "call this whenever you need to generate or write source code, for example when user asks 'Can you generate a function to get the current time'"
+GENERATE_SOURCE_CODE_TOOL_DESCRIPTION = "call this whenever you need to generate or write source code, for example when user asks 'Can you generate a function to get the current time' or 'generate or implement code'"
 
 GET_SOURCE_CODE_TOOL_NAME = "get_source_code"
 GET_SOURCE_CODE_TOOL_DESCRIPTION = "call this whenever you need to get source code for evaluation or refactoring, for example when user asks 'Can you help me with the code?' or 'Can you help take a look at my code?' You can choose to either use screenshare or not to get code"
@@ -218,7 +218,14 @@ class ComputerToolExtension(AsyncLLMToolBaseExtension):
             LLMToolMetadata(
                 name=GENERATE_SOURCE_CODE_TOOL_NAME,
                 description=GENERATE_SOURCE_CODE_TOOL_DESCRIPTION,
-                parameters=[]
+                parameters=[
+                    LLMToolMetadataParameter(
+                        name="name",
+                        type="string",
+                        description="The name of the tool to generate source code",
+                        required=True,
+                    )
+                ]
             ),
             LLMToolMetadata(
                 name=GET_SOURCE_CODE_TOOL_NAME,
@@ -249,12 +256,6 @@ class ComputerToolExtension(AsyncLLMToolBaseExtension):
 
             result = await self._save_to_notebook(args, ten_env)
             return {"content": json.dumps(result)}
-        elif name == GENERATE_SOURCE_CODE_TOOL_NAME:
-            asyncio.create_task(self.coding_completion(ten_env, ["coding", [{
-                "type": "text",
-                "text": ""
-            }], self.memory], "generate_source"))
-            return {"content": json.dumps({"text": f"just say 'the coding assistance has been provided'"})}
         elif name == GET_SOURCE_CODE_TOOL_NAME:
             use_screenshare = args.get("use_screenshare")
             ten_env.log_info(f"will get source code use_screenshare {use_screenshare}")
@@ -285,11 +286,11 @@ class ComputerToolExtension(AsyncLLMToolBaseExtension):
                     ten_env.log_info(f"image_data is none image_width {self.image_width} image_height {self.image_height}")
                     return {"content": json.dumps({"text": f"just say 'screenshare is not visible to me'"})}
         elif name == GENERATE_SOURCE_CODE_TOOL_NAME:
-            text = args.get("text")
-            ten_env.log_info(f"will generate source code {text}")
+            generate_name = args.get("name")
+            ten_env.log_info(f"will generate source code {generate_name}")
             asyncio.create_task(self.coding_completion(ten_env, ["coding", [{
                 "type": "text",
-                "text": text
+                "text": generate_name
             }], self.memory], "generate_source"))
             return {"content": json.dumps({"text": f"just say 'the coding assistance has been provided'"})}
 
