@@ -44,8 +44,9 @@ class AsyncLLMToolBaseExtension(AsyncExtension, ABC):
                 tool_args = json.loads(cmd.get_property_to_json("arguments"))
                 ten_env.log_debug(
                     f"tool_name: {tool_name}, tool_args: {tool_args}")
+                ten_env.log_info(f"run_tool name {tool_name}")
                 result = await asyncio.create_task(self.run_tool(ten_env, tool_name, tool_args))
-
+                ten_env.log_info(f"tool result {result}")
                 if result is None:
                     ten_env.return_result(CmdResult.create(StatusCode.OK), cmd)
                     return

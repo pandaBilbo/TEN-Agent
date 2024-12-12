@@ -202,6 +202,7 @@ class OpenAIChatGPTExtension(AsyncLLMBaseExtension):
 
                         # Send the command and handle the result through the future
                         result: CmdResult = await ten_env.send_cmd(cmd)
+                        ten_env.log_info(f"tool_call result: {result}")
                         if result.get_status_code() == StatusCode.OK:
                             tool_result: LLMToolResult = json.loads(
                                 result.get_property_to_json(CMD_PROPERTY_RESULT))
