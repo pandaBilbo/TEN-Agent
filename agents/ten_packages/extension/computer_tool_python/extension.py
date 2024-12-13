@@ -32,7 +32,7 @@ SAVE_TO_NOTEBOOK_TOOL_NAME = "save_to_notebook"
 SAVE_TO_NOTEBOOK_TOOL_DESCRIPTION = "call this whenever you need to save anything to notebook"    
 
 GENERATE_SOURCE_CODE_TOOL_NAME = "generate_source_code"
-GENERATE_SOURCE_CODE_TOOL_DESCRIPTION = "call this whenever you need to generate or write source code, for example when user asks 'Can you generate a function to get the current time' or 'generate or implement code'"
+GENERATE_SOURCE_CODE_TOOL_DESCRIPTION = "call this whenever you need to generate or write source code, for example when user asks 'Can you generate a function to get the current time' or 'any generate code'"
 
 GET_SOURCE_CODE_TOOL_NAME = "get_source_code"
 GET_SOURCE_CODE_TOOL_DESCRIPTION = "call this whenever you need to get source code for evaluation or refactoring, for example when user asks 'Can you help me with the code?' or 'Can you help take a look at my code?' You can choose to either use screenshare or not to get code"
@@ -222,7 +222,7 @@ class ComputerToolExtension(AsyncLLMToolBaseExtension):
                     LLMToolMetadataParameter(
                         name="name",
                         type="string",
-                        description="The name of the tool to generate source code",
+                        description="What code do you want to generate?",
                         required=True,
                     )
                 ]
