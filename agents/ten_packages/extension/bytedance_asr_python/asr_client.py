@@ -8,30 +8,25 @@ import websockets
 from hashlib import sha256
 from urllib.parse import urlparse
 
-# 常量定义
 PROTOCOL_VERSION = 0b0001
 DEFAULT_HEADER_SIZE = 0b0001
 
-# Message Type
 CLIENT_FULL_REQUEST = 0b0001
 CLIENT_AUDIO_ONLY_REQUEST = 0b0010
 SERVER_FULL_RESPONSE = 0b1001
 SERVER_ACK = 0b1011
 SERVER_ERROR_RESPONSE = 0b1111
 
-# Message Type Specific Flags
 NO_SEQUENCE = 0b0000
 POS_SEQUENCE = 0b0001
 NEG_SEQUENCE = 0b0010
 NEG_SEQUENCE_1 = 0b0011
 
-# Message Serialization
 NO_SERIALIZATION = 0b0000
 JSON = 0b0001
 THRIFT = 0b0011
 CUSTOM_TYPE = 0b1111
 
-# Message Compression
 NO_COMPRESSION = 0b0000
 GZIP = 0b0001
 CUSTOM_COMPRESSION = 0b1111
@@ -111,9 +106,6 @@ def parse_response(res):
 
 class AsrWsClient:
     def __init__(self, cluster, **kwargs):
-        """初始化客户端
-        :param cluster: 集群名称
-        """
         self.cluster = cluster
         self.success_code = 1000
         self.seg_duration = int(kwargs.get("seg_duration", 15000))
@@ -134,19 +126,6 @@ class AsrWsClient:
         self.codec = kwargs.get("codec", "raw")
         self.auth_method = kwargs.get("auth_method", "token")
         self.secret = kwargs.get("secret", "access_secret")
-
-    async def execute(self):
-        """执行语音识别"""
-        with open(self.audio_path, mode="rb") as _f:
-            data = _f.read()
-        audio_data = bytes(data)
-        
-        # 计算分片大小
-        bytes_per_sample = self.bits // 8
-        size_per_sec = self.channel * bytes_per_sample * self.rate
-        segment_size = int(size_per_sec * self.seg_duration / 1000)
-        
-        return await self.segment_data_processor(audio_data, segment_size)
 
     def construct_request(self, reqid):
         return {
@@ -205,54 +184,6 @@ class AsrWsClient:
             self.token, str(mac, 'utf-8'), auth_headers)
         return header_dicts
 
-    async def segment_data_processor(self, wav_data: bytes, segment_size: int):
-        reqid = str(uuid.uuid4())
-        request_params = self.construct_request(reqid)
-        payload_bytes = str.encode(json.dumps(request_params))
-        payload_bytes = gzip.compress(payload_bytes)
-        full_client_request = bytearray(generate_full_default_header())
-        full_client_request.extend((len(payload_bytes)).to_bytes(4, 'big'))
-        full_client_request.extend(payload_bytes)
-
-        header = self.token_auth() if self.auth_method == "token" else self.signature_auth(full_client_request)
-        
-        async with websockets.connect(
-            self.ws_url,
-            extra_headers=header,
-            max_size=1000000000
-        ) as ws:
-            # 发送初始请求
-            await ws.send(full_client_request)
-            res = await ws.recv()
-            result = parse_response(res)
-            if 'payload_msg' in result and result['payload_msg']['code'] != self.success_code:
-                return result
-
-            # 分片发送音频数据
-            for seq, (chunk, last) in enumerate(AsrWsClient.slice_data(wav_data, segment_size), 1):
-                payload_bytes = gzip.compress(chunk)
-                audio_only_request = bytearray(
-                    generate_last_audio_default_header() if last else generate_audio_default_header()
-                )
-                audio_only_request.extend((len(payload_bytes)).to_bytes(4, 'big'))
-                audio_only_request.extend(payload_bytes)
-                
-                # 发送音频数据
-                await ws.send(audio_only_request)
-                
-                # 接收识别结果
-                res = await ws.recv()
-                result = parse_response(res)
-                print(f"识别结果: {result}")
-                # 处理识别结果
-                if 'payload_msg' in result:
-                    if result['payload_msg']['code'] != self.success_code:
-                        return result
-                    if 'text' in result['payload_msg']:
-                        print(f"实时识别结果: {result['payload_msg']['text']}")
-        
-        return result 
-
 class ByteDanceWebSocketClient:
     def __init__(self, config):
         self.ws = None
@@ -266,7 +197,7 @@ class ByteDanceWebSocketClient:
         )
         self.callbacks = {}
         self.connected = False
-        self.reconnecting = False  # 添加重连标志
+        self.reconnecting = False
 
     async def start(self):
         try:
@@ -294,7 +225,6 @@ class ByteDanceWebSocketClient:
             if self.callbacks.get('open'):
                 await self.callbacks['open']()
                 
-            # 启动监听
             asyncio.create_task(self._listen())
             return True
         except Exception as e:

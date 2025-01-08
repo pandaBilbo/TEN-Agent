@@ -7,28 +7,14 @@
 from dataclasses import dataclass
 from ten_ai_base.config import BaseConfig
 from .asr_client import (
-    AsrWsClient,
-    generate_full_default_header,
-    generate_audio_default_header,
-    generate_last_audio_default_header,
-    parse_response,
     ByteDanceWebSocketClient,
 )
 import asyncio
-import uuid
-import json
-import gzip
-import websockets
-import traceback
 
 from ten import (
     AudioFrame,
-    VideoFrame,
     AsyncExtension,
     AsyncTenEnv,
-    Cmd,
-    StatusCode,
-    CmdResult,
     Data,
 )
 
@@ -55,8 +41,11 @@ class ByteDanceASRExtension(AsyncExtension):
         self.stream_id = -1
         self.loop = None
         self.buffer = bytearray()
-        self.seg_duration = 100
         self.last_text = ""
+        self.chunk_queue = asyncio.Queue()
+        self.send_interval = 20
+        self.sending_task = None
+        self.chunk_size = 3200
 
     async def on_start(self, ten_env: AsyncTenEnv) -> None:
         ten_env.log_info("ByteDance ASR starting")
@@ -68,23 +57,16 @@ class ByteDanceASRExtension(AsyncExtension):
             ten_env.log_error("Missing required configuration")
             return
 
-        # 计算分片大小 (100ms 的数据)
-        bytes_per_sample = self.config.bits // 8
-        size_per_sec = self.config.channels * bytes_per_sample * self.config.sample_rate
-        self.chunk_size = int(size_per_sec * self.seg_duration / 1000)
-
         self.client = ByteDanceWebSocketClient(self.config)
         
-        # 设置回调
         async def on_result(payload):
             if 'result' in payload and isinstance(payload['result'], list) and len(payload['result']) > 0:
                 asr_result = payload['result'][0]
                 
-                # 检查是否有 utterances
                 if 'utterances' in asr_result and isinstance(asr_result['utterances'], list):
                     for utterance in asr_result['utterances']:
                         text = utterance.get('text', '')
-                        is_final = utterance.get('definite', False)  # 使用 definite 字段判断是否为最终结果
+                        is_final = utterance.get('definite', False)
                         
                         if text and text != self.last_text:
                             await self._send_text(
@@ -102,8 +84,27 @@ class ByteDanceASRExtension(AsyncExtension):
         self.client.on('result', on_result)
         self.client.on('error', on_error)
         
-        # 启动客户端
         await self.client.start()
+        self.sending_task = self.loop.create_task(self._process_chunks())
+
+    async def _process_chunks(self):
+        while True:
+            try:
+                chunks = []
+                for _ in range(4):
+                    if self.chunk_queue.empty():
+                        break
+                    chunk = await self.chunk_queue.get()
+                    if chunk:
+                        chunks.append(chunk)
+                if chunks:
+                    combined_chunk = b''.join(chunks)
+                    await self.client.send(combined_chunk)
+                
+                await asyncio.sleep(self.send_interval / 1000)
+            except Exception as e:
+                self.ten_env.log_error(f"Error processing chunks: {str(e)}")
+                await asyncio.sleep(0.1)
 
     async def on_audio_frame(self, ten_env: AsyncTenEnv, audio_frame: AudioFrame) -> None:
         if not self.client or not self.client.connected:
@@ -111,7 +112,8 @@ class ByteDanceASRExtension(AsyncExtension):
             return
 
         frame_buf = audio_frame.get_buf()
-        if not frame_buf:
+        if not frame_buf or len(frame_buf) == 0:
+            ten_env.log_error("Empty audio frame")
             return
 
         try:
@@ -119,18 +121,17 @@ class ByteDanceASRExtension(AsyncExtension):
         except Exception as e:
             self.ten_env.log_error(f"Failed to get stream_id: {str(e)}")
             return
-        
-        # 缓存音频数据
-        self.buffer.extend(frame_buf)
-        
-        # 当缓冲区达到指定大小时发送
-        while len(self.buffer) >= self.chunk_size:
-            chunk = self.buffer[:self.chunk_size]
-            self.buffer = self.buffer[self.chunk_size:]
-            await self.client.send(bytes(chunk))
+    
+        await self.chunk_queue.put(frame_buf)
 
     async def on_stop(self, ten_env: AsyncTenEnv) -> None:
         ten_env.log_info("ByteDance ASR stopping")
+        if self.sending_task:
+            self.sending_task.cancel()
+            try:
+                await self.sending_task
+            except asyncio.CancelledError:
+                pass
         if self.client:
             await self.client.close()
             self.client = None
@@ -138,8 +139,6 @@ class ByteDanceASRExtension(AsyncExtension):
     async def _send_text(self, text: str, is_final: bool, stream_id: int) -> None:
         if not text.strip():
             return
-            
-        self.ten_env.log_info(f"Sending text: [{text}], is_final: {is_final}, stream_id: {stream_id}")
             
         data = Data.create("text_data")
         data.set_property_bool(DATA_OUT_TEXT_DATA_PROPERTY_IS_FINAL, is_final)
@@ -150,8 +149,6 @@ class ByteDanceASRExtension(AsyncExtension):
         await self.ten_env.send_data(data)
 
     async def _start_listen(self) -> None:
-        self.ten_env.log_info("start and listen bytedance asr")
-
         self.client = ByteDanceWebSocketClient(self.config)
 
         async def on_open():
