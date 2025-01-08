@@ -124,8 +124,8 @@ class AsrWsClient:
         self.uid = kwargs.get("uid", "streaming_asr_demo")
         self.workflow = kwargs.get("workflow", "audio_in,resample,partition,vad,fe,decode,itn,nlu_punctuate")
         self.show_language = kwargs.get("show_language", False)
-        self.show_utterances = kwargs.get("show_utterances", False)
-        self.result_type = kwargs.get("result_type", "full")
+        self.show_utterances = kwargs.get("show_utterances", True)
+        self.result_type = kwargs.get("result_type", "single")
         self.format = kwargs.get("format", "pcm")
         self.rate = kwargs.get("sample_rate", 16000)
         self.language = kwargs.get("language", "zh-CN")
@@ -252,3 +252,99 @@ class AsrWsClient:
                         print(f"实时识别结果: {result['payload_msg']['text']}")
         
         return result 
+
+class ByteDanceWebSocketClient:
+    def __init__(self, config):
+        self.ws = None
+        self.client = AsrWsClient(
+            cluster=config.cluster,
+            appid=config.api_key,
+            token=config.token,
+            sample_rate=config.sample_rate,
+            bits=config.bits,
+            channel=config.channels,
+        )
+        self.callbacks = {}
+        self.connected = False
+        self.reconnecting = False  # 添加重连标志
+
+    async def start(self):
+        try:
+            reqid = str(uuid.uuid4())
+            request_params = self.client.construct_request(reqid)
+            payload_bytes = gzip.compress(str.encode(json.dumps(request_params)))
+            
+            full_client_request = bytearray(generate_full_default_header())
+            full_client_request.extend((len(payload_bytes)).to_bytes(4, 'big'))
+            full_client_request.extend(payload_bytes)
+            
+            headers = self.client.token_auth()
+            if self.ws:
+                await self.ws.close()
+                
+            self.ws = await websockets.connect(
+                self.client.ws_url,
+                extra_headers=headers,
+                max_size=1000000000
+            )
+            
+            await self.ws.send(full_client_request)
+            self.connected = True
+            
+            if self.callbacks.get('open'):
+                await self.callbacks['open']()
+                
+            # 启动监听
+            asyncio.create_task(self._listen())
+            return True
+        except Exception as e:
+            if self.callbacks.get('error'):
+                await self.callbacks['error'](str(e))
+            return False
+
+    async def send(self, audio_data: bytes):
+        if not self.connected:
+            return False
+            
+        try:
+            payload_bytes = gzip.compress(audio_data)
+            audio_only_request = bytearray(generate_audio_default_header())
+            audio_only_request.extend((len(payload_bytes)).to_bytes(4, 'big'))
+            audio_only_request.extend(payload_bytes)
+            
+            await self.ws.send(audio_only_request)
+            return True
+        except Exception:
+            self.connected = False
+            return False
+
+    async def _listen(self):
+        while self.connected:
+            try:
+                res = await self.ws.recv()
+                result = parse_response(res)
+                
+                if result and 'payload_msg' in result:
+                    payload = result['payload_msg']
+                    if payload.get('code') != 1000:
+                        if self.callbacks.get('error'):
+                            await self.callbacks['error'](payload)
+                        continue
+                        
+                    if 'result' in payload:
+                        if self.callbacks.get('result'):
+                            await self.callbacks['result'](payload)
+            except Exception as e:
+                self.connected = False
+                if self.callbacks.get('close'):
+                    await self.callbacks['close']()
+                break
+
+    def on(self, event: str, callback):
+        self.callbacks[event] = callback
+
+    async def close(self):
+        self.connected = False
+        if self.ws:
+            await self.ws.close()
+            self.ws = None 
