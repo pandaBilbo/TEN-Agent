@@ -16,6 +16,7 @@ from ten import (
     AsyncExtension,
     AsyncTenEnv,
     Data,
+    Cmd 
 )
 
 DATA_OUT_TEXT_DATA_PROPERTY_TEXT = "text"
@@ -46,9 +47,11 @@ class ByteDanceASRExtension(AsyncExtension):
         self.send_interval = 20
         self.sending_task = None
         self.chunk_size = 3200
+    
+    async def on_cmd(self, ten_env: AsyncTenEnv, cmd: Cmd) -> None:
+        cmd_name = cmd.get_name()
 
     async def on_start(self, ten_env: AsyncTenEnv) -> None:
-        ten_env.log_info("ByteDance ASR starting")
         self.loop = asyncio.get_event_loop()
         self.ten_env = ten_env
         
@@ -62,12 +65,15 @@ class ByteDanceASRExtension(AsyncExtension):
         async def on_result(payload):
             if 'result' in payload and isinstance(payload['result'], list) and len(payload['result']) > 0:
                 asr_result = payload['result'][0]
-                
+                self.ten_env.log_info(f"bytedance asr on_result: {asr_result}")
                 if 'utterances' in asr_result and isinstance(asr_result['utterances'], list):
                     for utterance in asr_result['utterances']:
                         text = utterance.get('text', '')
                         is_final = utterance.get('definite', False)
                         
+                        if is_final:
+                            self.ten_env.log_info("[ASR_TEST_POINT_IS_FINAL]")
+
                         if text and text != self.last_text:
                             await self._send_text(
                                 text=text,
@@ -99,6 +105,7 @@ class ByteDanceASRExtension(AsyncExtension):
                         chunks.append(chunk)
                 if chunks:
                     combined_chunk = b''.join(chunks)
+                    self.ten_env.log_info(f"Sending combined chunk of size: {len(combined_chunk)} bytes")
                     await self.client.send(combined_chunk)
                 
                 await asyncio.sleep(self.send_interval / 1000)
@@ -107,6 +114,7 @@ class ByteDanceASRExtension(AsyncExtension):
                 await asyncio.sleep(0.1)
 
     async def on_audio_frame(self, ten_env: AsyncTenEnv, audio_frame: AudioFrame) -> None:
+        ten_env.log_info("[ASR_TEST_POINT_ON_AUDIO_FRAME]")
         if not self.client or not self.client.connected:
             ten_env.log_error("WebSocket not connected")
             return

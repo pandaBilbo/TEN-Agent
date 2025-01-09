@@ -1,0 +1,5 @@
+{
+  "api_key": "${env:DASHSCOPE_API_KEY}",
+  "model": "paraformer-realtime-v2",
+  "sample_rate": 16000
+}

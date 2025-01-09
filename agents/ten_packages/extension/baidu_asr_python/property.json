@@ -1,0 +1,6 @@
+{
+  "api_key": "${env:BAIDU_API_KEY}",
+  "app_id": "${env:BAIDU_APP_ID}",
+  "model": "15372",
+  "sample_rate": 16000
+}

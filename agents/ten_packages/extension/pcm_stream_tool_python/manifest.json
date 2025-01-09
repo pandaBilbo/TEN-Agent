@@ -1,0 +1,30 @@
+{
+  "type": "extension",
+  "name": "pcm_stream_tool_python",
+  "version": "0.6.2",
+  "dependencies": [
+    {
+      "type": "system",
+      "name": "ten_runtime_python",
+      "version": "0.6.2"
+    }
+  ],
+  "package": {
+    "include": [
+      "manifest.json",
+      "property.json",
+      "BUILD.gn",
+      "**.tent",
+      "**.py",
+      "README.md",
+      "tests/**"
+    ]
+  },
+  "api": {
+    "property": {
+      "pcm_file": {
+        "type": "string"
+      }
+    }
+  }
+}

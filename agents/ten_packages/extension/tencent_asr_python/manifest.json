@@ -1,38 +1,27 @@
 {
   "type": "extension",
-  "name": "bytedance_asr_python",
-  "version": "0.6.2",
+  "name": "tencent_asr_python",
+  "version": "0.1.0",
   "dependencies": [
     {
       "type": "system",
       "name": "ten_runtime_python",
-      "version": "0.6.2"
+      "version": "0.6"
     }
   ],
-  "package": {
-    "include": [
-      "manifest.json",
-      "property.json",
-      "BUILD.gn",
-      "**.tent",
-      "**.py",
-      "README.md",
-      "tests/**"
-    ]
-  },
   "api": {
     "property": {
-      "api_key": {
+      "app_id": {
         "type": "string"
       },
-      "token": {
+      "secret_id": {
         "type": "string"
       },
-      "cluster": {
+      "secret_key": {
         "type": "string"
       },
-      "sample_rate": {
-        "type": "int64"
+      "engine_model_type": {
+        "type": "string"
       }
     },
     "audio_frame_in": [
@@ -43,28 +32,9 @@
     ],
     "cmd_in": [
       {
-        "name": "flush"
-      },
-      {
         "name": "on_user_joined",
         "property": {
           "user_id": {
-            "type": "string"
-          }
-        }
-      },
-      {
-        "name": "on_user_left",
-        "property": {
-          "user_id": {
-            "type": "string"
-          }
-        }
-      },
-      {
-        "name": "on_connection_failure",
-        "property": {
-          "error": {
             "type": "string"
           }
         }
