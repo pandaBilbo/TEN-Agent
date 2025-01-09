@@ -91,9 +91,7 @@ class ByteDanceASRExtension(AsyncExtension):
         while True:
             try:
                 chunks = []
-                for _ in range(4):
-                    if self.chunk_queue.empty():
-                        break
+                while not self.chunk_queue.empty():
                     chunk = await self.chunk_queue.get()
                     if chunk:
                         chunks.append(chunk)
@@ -122,7 +120,8 @@ class ByteDanceASRExtension(AsyncExtension):
             self.ten_env.log_error(f"Failed to get stream_id: {str(e)}")
             return
     
-        await self.chunk_queue.put(frame_buf)
+        # await self.chunk_queue.put(frame_buf)
+        await self.client.send(frame_buf)
 
     async def on_stop(self, ten_env: AsyncTenEnv) -> None:
         ten_env.log_info("ByteDance ASR stopping")
