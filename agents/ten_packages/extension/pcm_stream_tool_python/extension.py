@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from ten_ai_base.config import BaseConfig
 import asyncio
 import os
+import time
 
 from ten import (
     AudioFrame,
@@ -55,7 +56,7 @@ class PCMStreamToolExtension(AsyncExtension):
 
     def start_get_pcm_stream(self, ten_env: AsyncTenEnv) -> None:
 
-        chunk_size = int(16000 * 2 * 1 * 0.01)
+        chunk_size = int(16000 * 2 * 1 * 0.02)
         pcm_path = os.path.join(os.path.dirname(__file__), self.config.pcm_file)
         async def read_and_send_pcm():
             try:
@@ -79,10 +80,17 @@ class PCMStreamToolExtension(AsyncExtension):
                         audio_frame.unlock_buf(buff)
                         
                         audio_frame.set_property_int("stream_id", self.stream_id)
-                        
+                        ten_env.log_info("pcm_stream_tool_python send_audio_frame index:{}".format(
+                            int(time.time() * 1000)
+                         ))
                         await ten_env.send_audio_frame(audio_frame)
-                        
-                        await asyncio.sleep(0.01)
+                        ten_env.log_info("pcm_stream_tool_python send_audio_frame end index before sleep:{}".format(
+                            int(time.time() * 1000)
+                        ))
+                        await asyncio.sleep(0.02)
+                        ten_env.log_info("pcm_stream_tool_python send_audio_frame end index after sleep:{}".format(
+                            int(time.time() * 1000)
+                        ))
                         
             except Exception as e:
                 ten_env.log_error(f"Error processing PCM data: {str(e)}")
@@ -90,4 +98,4 @@ class PCMStreamToolExtension(AsyncExtension):
         if not self.loop:
             self.loop = asyncio.get_event_loop()
 
-        self.loop.create_task(read_and_send_pcm())
+        asyncio.create_task(read_and_send_pcm())
