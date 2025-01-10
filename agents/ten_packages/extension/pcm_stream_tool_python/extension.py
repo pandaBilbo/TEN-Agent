@@ -8,6 +8,8 @@ from ten_ai_base.config import BaseConfig
 import asyncio
 import os
 import time
+import os
+import subprocess
 
 from ten import (
     AudioFrame,
@@ -40,7 +42,8 @@ class PCMStreamToolExtension(AsyncExtension):
 
     async def on_start(self, ten_env: AsyncTenEnv) -> None:
         self.config = await PcmStreamToolConfig.create_async(ten_env=ten_env)
-        self.start_get_pcm_stream(ten_env)
+        self.loop = asyncio.get_event_loop()
+        self.loop.create_task(self.start_get_pcm_stream(ten_env))
 
     async def on_stop(self, ten_env: AsyncTenEnv) -> None:
         ten_env.log_debug("on_stop")
@@ -54,9 +57,10 @@ class PCMStreamToolExtension(AsyncExtension):
         ten_env.log_debug("on_data name {}".format(data_name))
         await super().on_data(ten_env, data)
 
-    def start_get_pcm_stream(self, ten_env: AsyncTenEnv) -> None:
+    async def start_get_pcm_stream(self, ten_env: AsyncTenEnv) -> None:
+        await asyncio.sleep(1.5)
 
-        chunk_size = int(16000 * 2 * 1 * 0.02)
+        chunk_size = int(16000 * 2 * 1 * 0.01)
         pcm_path = os.path.join(os.path.dirname(__file__), self.config.pcm_file)
         async def read_and_send_pcm():
             try:
@@ -65,6 +69,10 @@ class PCMStreamToolExtension(AsyncExtension):
                         chunk = pcm_file.read(chunk_size)
                         if not chunk:
                             ten_env.log_info("pcm file read end!!!")
+                            await asyncio.sleep(180)
+                            close_app_cmd = Cmd.create("ten:close_app")
+                            close_app_cmd.set_dest("localhost", None, None, None)
+                            await ten_env.send_cmd(close_app_cmd)
                             break
                             
                         audio_frame = AudioFrame.create("pcm_frame")
@@ -80,22 +88,19 @@ class PCMStreamToolExtension(AsyncExtension):
                         audio_frame.unlock_buf(buff)
                         
                         audio_frame.set_property_int("stream_id", self.stream_id)
-                        ten_env.log_info("pcm_stream_tool_python send_audio_frame index:{}".format(
-                            int(time.time() * 1000)
-                         ))
+                        # ten_env.log_info("pcm_stream_tool_python send_audio_frame index:{}".format(
+                        #     int(time.time() * 1000)
+                        #  ))
                         await ten_env.send_audio_frame(audio_frame)
-                        ten_env.log_info("pcm_stream_tool_python send_audio_frame end index before sleep:{}".format(
-                            int(time.time() * 1000)
-                        ))
-                        await asyncio.sleep(0.02)
-                        ten_env.log_info("pcm_stream_tool_python send_audio_frame end index after sleep:{}".format(
-                            int(time.time() * 1000)
-                        ))
+                        # ten_env.log_info("pcm_stream_tool_python send_audio_frame end index before sleep:{}".format(
+                        #     int(time.time() * 1000)
+                        # ))
+                        await asyncio.sleep(0.01)
+                        # ten_env.log_info("pcm_stream_tool_python send_audio_frame end index after sleep:{}".format(
+                        #     int(time.time() * 1000)
+                        # ))
                         
             except Exception as e:
                 ten_env.log_error(f"Error processing PCM data: {str(e)}")
-
-        if not self.loop:
-            self.loop = asyncio.get_event_loop()
 
         asyncio.create_task(read_and_send_pcm())

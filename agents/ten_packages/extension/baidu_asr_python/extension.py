@@ -154,12 +154,11 @@ class BaiduASRExtension(AsyncExtension):
             text = response_data.get("result", "")
             is_final = response_data.get("type", "") == "FIN_TEXT"
 
-            if is_final:
-                self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
-                    int(time.time() * 1000)
-                ))
-
             if text:
+                if is_final:
+                    self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
+                        int(time.time() * 1000)
+                    ))
                 asyncio.run_coroutine_threadsafe(
                     self._send_text(text, is_final, self.stream_id), self.loop
                 )
