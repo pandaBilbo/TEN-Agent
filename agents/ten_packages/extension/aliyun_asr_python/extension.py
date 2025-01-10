@@ -10,6 +10,7 @@ from ten import (
 
 import asyncio
 import dashscope
+import time
 from dashscope.audio.asr import Recognition, RecognitionCallback, RecognitionResult
 from dataclasses import dataclass
 from ten_ai_base.config import BaseConfig
@@ -73,7 +74,9 @@ class AliyunASRExtension(AsyncExtension):
         self.start_recognition()
 
     async def on_audio_frame(self, ten_env: AsyncTenEnv, frame: AudioFrame) -> None:
-        ten_env.log_info("[ASR_TEST_POINT_ON_AUDIO_FRAME]")
+        ten_env.log_info("ASR_TEST_POINT_ON_AUDIO_FRAME:{}".format(
+            int(time.time() * 1000)
+        ))
 
         if self.stopped:
             return
@@ -153,7 +156,9 @@ class Callback(RecognitionCallback):
         is_final = sentence.get("sentence_end", False)
 
         if is_final:
-            self.ten_env.log_info("[ASR_TEST_POINT_IS_FINAL]")
+            self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
+                int(time.time() * 1000)
+            ))
 
         text = sentence.get("text", "")
         if text:

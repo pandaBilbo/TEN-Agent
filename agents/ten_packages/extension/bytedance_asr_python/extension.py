@@ -10,7 +10,7 @@ from .asr_client import (
     ByteDanceWebSocketClient,
 )
 import asyncio
-
+import time
 from ten import (
     AudioFrame,
     AsyncExtension,
@@ -72,7 +72,9 @@ class ByteDanceASRExtension(AsyncExtension):
                         is_final = utterance.get('definite', False)
                         
                         if is_final:
-                            self.ten_env.log_info("[ASR_TEST_POINT_IS_FINAL]")
+                            self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
+                                int(time.time() * 1000)
+                            ))
 
                         if text and text != self.last_text:
                             await self._send_text(
@@ -114,7 +116,9 @@ class ByteDanceASRExtension(AsyncExtension):
                 await asyncio.sleep(0.1)
 
     async def on_audio_frame(self, ten_env: AsyncTenEnv, audio_frame: AudioFrame) -> None:
-        ten_env.log_info("[ASR_TEST_POINT_ON_AUDIO_FRAME]")
+        ten_env.log_info("ASR_TEST_POINT_ON_AUDIO_FRAME:{}".format(
+            int(time.time() * 1000)
+        ))
         if not self.client or not self.client.connected:
             ten_env.log_error("WebSocket not connected")
             return

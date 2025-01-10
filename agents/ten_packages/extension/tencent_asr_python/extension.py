@@ -9,6 +9,7 @@ from ten import (
 )
 
 import asyncio
+import time
 from dataclasses import dataclass
 
 from ten_ai_base.config import BaseConfig
@@ -68,7 +69,9 @@ class TencentASRExtension(AsyncExtension):
         ten_env.log_info("starting async_tencent_asr_wrapper thread")
 
     async def on_audio_frame(self, ten_env: AsyncTenEnv, frame: AudioFrame) -> None:
-        ten_env.log_info("[ASR_TEST_POINT_ON_AUDIO_FRAME]")
+        ten_env.log_info("ASR_TEST_POINT_ON_AUDIO_FRAME:{}".format(
+            int(time.time() * 1000)
+        ))
 
         if not self.client:
             return
@@ -100,7 +103,9 @@ class TencentASRExtension(AsyncExtension):
                 break
 
             if asr_result.is_final:
-                ten_env.log_info("[ASR_TEST_POINT_IS_FINAL]")
+                ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
+                    int(time.time() * 1000)
+                ))
                 
             await self.create_and_send_data(self.ten_env, asr_result)
 

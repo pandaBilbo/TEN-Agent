@@ -72,7 +72,9 @@ class BaiduASRExtension(AsyncExtension):
         await self.start_websocket()
 
     async def on_audio_frame(self, ten_env: AsyncTenEnv, frame: AudioFrame) -> None:
-        ten_env.log_info("[ASR_TEST_POINT_ON_AUDIO_FRAME]")
+        ten_env.log_info("ASR_TEST_POINT_ON_AUDIO_FRAME:{}".format(
+            int(time.time() * 1000)
+        ))
 
         if self.stopped:
             return
@@ -153,7 +155,9 @@ class BaiduASRExtension(AsyncExtension):
             is_final = response_data.get("type", "") == "FIN_TEXT"
 
             if is_final:
-                self.ten_env.log_info("[ASR_TEST_POINT_IS_FINAL]")
+                self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
+                    int(time.time() * 1000)
+                ))
 
             if text:
                 asyncio.run_coroutine_threadsafe(
