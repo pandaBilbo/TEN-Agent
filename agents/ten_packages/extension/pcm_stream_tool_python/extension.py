@@ -70,9 +70,9 @@ class PCMStreamToolExtension(AsyncExtension):
                         if not chunk:
                             ten_env.log_info("pcm file read end!!!")
                             await asyncio.sleep(180)
-                            # close_app_cmd = Cmd.create("ten:close_app")
-                            # close_app_cmd.set_dest("localhost", None, None, None)
-                            # await ten_env.send_cmd(close_app_cmd)
+                            close_app_cmd = Cmd.create("ten:close_app")
+                            close_app_cmd.set_dest("localhost", None, None, None)
+                            await ten_env.send_cmd(close_app_cmd)
                             break
                             
                         audio_frame = AudioFrame.create("pcm_frame")
