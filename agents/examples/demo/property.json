@@ -20,7 +20,7 @@
             "addon": "pcm_stream_tool_python",
             "extension_group": "default",
             "property": {
-              "pcm_file": "Eng_02.pcm"
+              "pcm_file": "Eng_20.pcm"
             }
           }
         ],
