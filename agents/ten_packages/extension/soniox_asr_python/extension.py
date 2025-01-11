@@ -142,20 +142,16 @@ class SonioxASRExtension(AsyncExtension):
         if not frame_buf or len(frame_buf) == 0:
             ten_env.log_error("Empty audio frame")
             return
-
+            
+        self.stream_id = audio_frame.get_property_int("stream_id")
+        
+        # Convert frame_buf to bytes if it's not already
+        audio_bytes = bytes(frame_buf) if isinstance(frame_buf, bytearray) else frame_buf
+        
         try:
-            self.stream_id = audio_frame.get_property_int("stream_id")
-            
-            # Convert frame_buf to bytes if it's not already
-            audio_bytes = bytes(frame_buf) if isinstance(frame_buf, bytearray) else frame_buf
-            
-            try:
-                self.audio_queue.put_nowait(audio_bytes)
-            except queue.Full:
-                self.ten_env.log_error("soniox_asr_python: Audio queue is full, dropping frame")
-                
-        except Exception as e:
-            ten_env.log_error(f"soniox_asr_python: Error processing audio frame: {str(e)}")
+            self.audio_queue.put_nowait(audio_bytes)
+        except queue.Full:
+            self.ten_env.log_error("soniox_asr_python: Audio queue is full, dropping frame")
 
     async def _send_text(self, text: str, is_final: bool, stream_id: int) -> None:
         if not text.strip():
