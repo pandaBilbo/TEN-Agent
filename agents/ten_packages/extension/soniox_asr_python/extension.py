@@ -127,7 +127,7 @@ class SonioxASRExtension(AsyncExtension):
         if self.transcription_thread:
             self.transcription_thread.join(timeout=1.0)
         if self.client:
-            self.client.close()
+            await self.client.close()
 
     async def on_audio_frame(
         self, ten_env: AsyncTenEnv, audio_frame: AudioFrame
@@ -146,7 +146,7 @@ class SonioxASRExtension(AsyncExtension):
         self.stream_id = audio_frame.get_property_int("stream_id")
         
         # Convert frame_buf to bytes if it's not already
-        audio_bytes = bytes(frame_buf) if isinstance(frame_buf, bytearray) else frame_buf
+        audio_bytes = bytes(frame_buf)
         
         try:
             self.audio_queue.put_nowait(audio_bytes)

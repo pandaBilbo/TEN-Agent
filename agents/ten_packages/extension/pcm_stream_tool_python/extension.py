@@ -62,18 +62,23 @@ class PCMStreamToolExtension(AsyncExtension):
 
         chunk_size = int(16000 * 2 * 1 * 0.01)
         pcm_path = os.path.join(os.path.dirname(__file__), self.config.pcm_file)
+        no_chunk_count = 500
         async def read_and_send_pcm():
+            nonlocal no_chunk_count 
             try:
                 with open(pcm_path, 'rb') as pcm_file:
                     while True:
                         chunk = pcm_file.read(chunk_size)
                         if not chunk:
-                            ten_env.log_info("pcm file read end!!!")
-                            await asyncio.sleep(180)
-                            close_app_cmd = Cmd.create("ten:close_app")
-                            close_app_cmd.set_dest("localhost", None, None, None)
-                            await ten_env.send_cmd(close_app_cmd)
-                            break
+                            no_chunk_count -= 1
+                            chunk = bytes([0] * int(16000 * 2 * 0.01))  # 16kHz, 16bit
+                            if no_chunk_count <= 0:
+                                # ten_env.log_info("pcm file read end!!!")
+                                await asyncio.sleep(180)
+                                close_app_cmd = Cmd.create("ten:close_app")
+                                close_app_cmd.set_dest("localhost", None, None, None)
+                                await ten_env.send_cmd(close_app_cmd)
+                                break
                             
                         audio_frame = AudioFrame.create("pcm_frame")
                         audio_frame.set_sample_rate(16000)                    
