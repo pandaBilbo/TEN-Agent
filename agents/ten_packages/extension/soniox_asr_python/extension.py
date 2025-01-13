@@ -127,7 +127,7 @@ class SonioxASRExtension(AsyncExtension):
         if self.transcription_thread:
             self.transcription_thread.join(timeout=1.0)
         if self.client:
-            await self.client.close()
+            self.client.close()
 
     async def on_audio_frame(
         self, ten_env: AsyncTenEnv, audio_frame: AudioFrame
