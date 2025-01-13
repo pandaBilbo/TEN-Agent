@@ -50,7 +50,9 @@ class SonioxASRExtension(AsyncExtension):
                 audio_data = self.audio_queue.get(timeout=0.1)  
                 yield audio_data
             except queue.Empty:
-                continue
+                self.ten_env.log_info("No new audio data")
+                yield b''
+                break
 
     def run_transcription(self):
         try:
