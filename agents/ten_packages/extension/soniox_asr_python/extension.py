@@ -154,7 +154,8 @@ class SonioxASRExtension(AsyncExtension):
         self.stream_id = audio_frame.get_property_int("stream_id")
         speech_end = audio_frame.get_property_bool("end_of_speech")
         if speech_end:
-            self.running = False
+            self.ten_env.log_info("soniox_asr_python: ASR audio frameend")
+            # self.running = False
         # Convert frame_buf to bytes if it's not already
         audio_bytes = bytes(frame_buf)
         
