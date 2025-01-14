@@ -51,8 +51,10 @@ class SonioxASRExtension(AsyncExtension):
                 yield audio_data
             except queue.Empty:
                 self.ten_env.log_info("No new audio data")
-                yield b''
-                break
+                continue
+        self.ten_env.log_info("soniox_asr_python: ASR end")
+        yield b''
+
 
     def run_transcription(self):
         try:
@@ -88,6 +90,10 @@ class SonioxASRExtension(AsyncExtension):
 
                 if final_tokens:  
                     is_final = nonfinal_tokens_str.strip() == ""
+                    if is_final:
+                        self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
+                            int(time.time() * 1000)
+                        ))
                     future = asyncio.run_coroutine_threadsafe(
                         self._send_text(
                             all_final_tokens_str, 
@@ -97,9 +103,9 @@ class SonioxASRExtension(AsyncExtension):
                         self.loop
                     )
                     if is_final:
-                        self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
-                            int(time.time() * 1000)
-                        ))
+                        # self.ten_env.log_info("ASR_TEST_POINT_IS_FINAL:{}".format(
+                        #     int(time.time() * 1000)
+                        # ))
                         all_final_tokens = []
                         all_final_tokens_str = ""
                         nonfinal_tokens_str = ""
@@ -146,7 +152,9 @@ class SonioxASRExtension(AsyncExtension):
             return
             
         self.stream_id = audio_frame.get_property_int("stream_id")
-        
+        speech_end = audio_frame.get_property_bool("end_of_speech")
+        if speech_end:
+            self.running = False
         # Convert frame_buf to bytes if it's not already
         audio_bytes = bytes(frame_buf)
         
