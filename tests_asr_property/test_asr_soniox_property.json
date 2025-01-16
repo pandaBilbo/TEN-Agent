@@ -1,0 +1,46 @@
+{
+    "_ten": {
+        "predefined_graphs": [
+            {
+                "name": "soniox_asr_assistant",
+                "auto_start": true,
+                "nodes": [
+                    {
+                        "type": "extension",
+                        "name": "soniox_asr",
+                        "addon": "soniox_asr_python",
+                        "extension_group": "soniox_asr",
+                        "property": {
+                            "api_key": "${env:SONIOX_ASR_API_KEY}"
+                        }
+                    },
+                    {
+                        "type": "extension",
+                        "name": "pcm_stream_tool_python",
+                        "addon": "pcm_stream_tool_python",
+                        "extension_group": "default",
+                        "property": {
+                            "pcm_file": "/app/tests_asr_pcm_en/Eng_01.pcm"
+                        }
+                    }
+                ],
+                "connections": [
+                    {
+                        "extension": "pcm_stream_tool_python",
+                        "audio_frame": [
+                            {
+                                "name": "pcm_frame",
+                                "dest": [
+                                    {
+                                        "extension": "soniox_asr"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "log_level": 3
+    }
+}

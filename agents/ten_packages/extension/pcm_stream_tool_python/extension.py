@@ -95,6 +95,7 @@ class PCMStreamToolExtension(AsyncExtension):
                         audio_frame.set_property_int("stream_id", self.stream_id)
 
                         if pcm_file.tell() == os.fstat(pcm_file.fileno()).st_size:
+                            ten_env.log_info("pcm_stream_tool_python send_audio_frame end_of_speech")
                             end_of_speech = True
                         audio_frame.set_property_bool("end_of_speech", end_of_speech)
                         # ten_env.log_info("pcm_stream_tool_python send_audio_frame index:{}".format(
